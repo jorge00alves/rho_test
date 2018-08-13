@@ -16,11 +16,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 @RestController
 public class WebApp {
     
-    DbQueries dbq;
+    Controller ctrl;
     
     public WebApp() {
         
-        this.dbq = new DbQueries();
+        this.ctrl = new Controller();
         
     }
     
@@ -32,35 +32,28 @@ public class WebApp {
     @RequestMapping("/getA2B")
     public String getA2B(@RequestParam(value="a", defaultValue="EUR") String a, @RequestParam(value="b", defaultValue="USD") String b) {
         
-        return dbq.getA2B(a, b);
+        return ctrl.getA2B(a, b);
         
     }
     
     @RequestMapping("/getAllFromA")
     public String getAllFromA(@RequestParam(value="a", defaultValue="EUR") String a) {
         
-        return dbq.getAllFromA(a);
+        return ctrl.getAllFromA(a);
         
     }
     
     @RequestMapping("/convertA2B")
-    public String convertA2B(@RequestParam(value="a", defaultValue="EUR") String a, @RequestParam(value="b", defaultValue="USD") String b, @RequestParam(value="c", defaultValue="1") float c) {
+    public String convertA2B(@RequestParam(value="a", defaultValue="EUR") String a, @RequestParam(value="b", defaultValue="USD") String b, @RequestParam(value="c", defaultValue="25") float c) {
         
-        return dbq.convertA2B(a, b, c);
-        
-    }
-    
-    @RequestMapping("/convertAllFromA")
-    public String convertAllFromA(@RequestParam(value="a", defaultValue="EUR") String a, @RequestParam(value="b", defaultValue="1") float b) {
-        
-        return dbq.convertAllFromA(a, b);
+        return ctrl.convertA2B(a, b, c);
         
     }
     
-    @RequestMapping("/rate")
-    public String rate() {
+    @RequestMapping("/convertA2SuppliedList")
+    public String convertA2SuppliedList(@RequestParam(value="a", defaultValue="EUR") String a, @RequestParam(value="b", defaultValue="25") float b, @RequestParam(value="c", defaultValue="USD,AED") String c) {
         
-        return dbq.testeRates();
+        return ctrl.convertA2SuppliedList(a, b, c);
         
     }
     

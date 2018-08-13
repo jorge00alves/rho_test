@@ -7,24 +7,17 @@ package com.jorge.demo;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
+import com.mongodb.Block;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.nio.charset.Charset;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import static com.mongodb.client.model.Filters.*;
+import static com.mongodb.client.model.Updates.*;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.bson.Document;
 
 /**
  *
@@ -32,295 +25,109 @@ import java.util.logging.Logger;
  */
 public class DbQueries {
     
-    public String fixerAccessKey = "d78c6330a71689fb613c11d334838ef1";
-    
-    public String[] currencies = new String[]{"EUR", "USD", "AUD", "CAD", "PLN", "MXN"};
+    MongoClient mongoClient;
+    MongoDatabase database;
+    MongoCollection<Document> collection;
     
     public DbQueries() {
         
-        MongoClient mongoClient = new MongoClient(new MongoClientURI("mongodb://jorge:teste1@ds111012.mlab.com:11012/teste"));
-        DB database = mongoClient.getDB("teste");
-        DBCollection collection = database.getCollection("Rates");
+        this.mongoClient = new MongoClient(new MongoClientURI("mongodb://jorge:teste1@ds111012.mlab.com:11012/teste"));
+        this.database = mongoClient.getDatabase("teste");
+        this.collection = database.getCollection("Rates");
         
     }
     
-    public String getA2B(String a, String b) {
+    public Document createDoc(String a, String b, double c, long timestamp) {
         
-        InputStream is = null;
+        Document doc = new Document("base", a).append("currency", b).append("rate", c).append("timestamp", timestamp);
         
-        try {
-            
-            is = new URL("http://data.fixer.io/api/latest?access_key=" + fixerAccessKey + "&base=" + a + "&symbols=" + b).openStream();
-            BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
-            String jsonText = rd.readLine();
-            JsonObject jo = (new JsonParser()).parse(jsonText).getAsJsonObject();
-            
-            //System.out.println(jo.toString());
-            
-            if(jo.getAsJsonPrimitive("success").getAsBoolean()) {
-
-                return "1 " + a + " = " + jo.getAsJsonObject("rates").get(b).toString() + " " + b;
-                
-            } else {
-                
-                if(jo.getAsJsonObject("error").get("info") != null) {
-                    
-                    return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type") + "<br>" + "Info: " + jo.getAsJsonObject("error").get("info");
-                    
-                } else {
-                    
-                    return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type");
-                    
-                }
-                
-            }
-            
-        } catch (MalformedURLException ex) {
-            Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-        } finally {
-            try {
-                is.close();
-            } catch (IOException ex) {
-                Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        
-        return null;
+        return doc;
         
     }
     
-    public String getAllFromA(String a) {
+    /**
+     * Alterar de maneira a receber um JsonObject com 4 campos (base + currency + rate + timestamp).
+     * Ou então isto pode estar assim.
+     * 
+     * @param jo 
+     */
+    public void putIntoMongoDB(JsonObject jo) {
         
-        InputStream is = null;
+        long timestamp = jo.get("timestamp").getAsLong();
         
-        try {
-            
-            ArrayList<String> als = new ArrayList<>();
-            
-            for(int i=0; i<currencies.length; i++) {
-                
-                if(!currencies[i].equals(a)) {
-                    
-                    als.add(currencies[i]);
-                    
-                }
-                
-            }
-            
-            String symbols = "";
-            
-            for(int n=0; n<als.size(); n++) {
-                
-                symbols += als.get(n);
-                if(n != als.size()-1) {
-                    symbols += ",";
-                }
-                
-            }
-            
-            is = new URL("http://data.fixer.io/api/latest?access_key=" + fixerAccessKey + "&base=" + a + "&symbols=" + symbols).openStream();
-            BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
-            String jsonText = rd.readLine();
-            JsonObject jo = (new JsonParser()).parse(jsonText).getAsJsonObject();
-            
-            if(jo.getAsJsonPrimitive("success").getAsBoolean()) {
-                
-                String res = "";
+        String a = jo.get("base").getAsString();
+        
+        List<Document> documents = new ArrayList<Document>();
+        
+        for (Map.Entry<String,JsonElement> entry : jo.getAsJsonObject("rates").entrySet()) {
 
-                for (Map.Entry<String,JsonElement> entry : jo.getAsJsonObject("rates").entrySet()) {
-
-                    res += "1 " + a + " = " + entry.getValue().toString() + " " + entry.getKey() + "<br>";
-
-                }
-
-                return res;
-                
-            } else {
-                
-                if(jo.getAsJsonObject("error").get("info") != null) {
-                    
-                    return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type") + "<br>" + "Info: " + jo.getAsJsonObject("error").get("info");
-                    
-                } else {
-                    
-                    return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type");
-                    
-                }
-                
-            }
+            //res += "1 " + a + " = " + entry.getValue().toString() + " " + entry.getKey() + "<br>";
+            String b = entry.getKey();
             
-        } catch (MalformedURLException ex) {
-            Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-        } finally {
-            try {
-                is.close();
-            } catch (IOException ex) {
-                Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-            }
+            double c = entry.getValue().getAsDouble();
+            
+            Document doc = createDoc(a, b, c, timestamp);
+            
+            documents.add(doc);
+            
+            //this.collection.insertOne(doc);
+
         }
         
-        return null;
+        this.collection.insertMany(documents);
         
     }
     
-    public String convertA2B(String a, String b, float c) {
+    /**
+     * Fazer um arraylist de JsonObjects. Cada JsonObject tem os 4 campos (base + currency + rate + timestamp). Isto vai fazer com que altere o código todo no FixerIO.
+     * 
+     * @param jo
+     * @param currencies
+     * @return 
+     */
+    public ArrayList<JsonObject> getFromMongoDB(JsonObject jo, String[] currencies) {
         
-        InputStream is = null;
+        ArrayList<JsonObject> ajo = new ArrayList<>();
         
-        try {
-            
-            is = new URL("http://data.fixer.io/api/latest?access_key=" + fixerAccessKey + "&base=" + a + "&symbols=" + b).openStream();
-            BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
-            String jsonText = rd.readLine();
-            JsonObject jo = (new JsonParser()).parse(jsonText).getAsJsonObject();
-            
-            //System.out.println(jo.toString());
-            
-            if(jo.getAsJsonPrimitive("success").getAsBoolean()) {
+        Block<Document> add2arraylist = new Block<Document>() {
+            @Override
+            public void apply(final Document document) {
+                //System.out.println(document.toJson());
                 
-                float res = jo.getAsJsonObject("rates").get(b).getAsFloat() * c;
-
-                return c + " " + a + " = " + res + " " + b;
-                
-            } else {
-                
-                if(jo.getAsJsonObject("error").get("info") != null) {
+                for(int i=0; i<currencies.length; i++) {
                     
-                    return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type") + "<br>" + "Info: " + jo.getAsJsonObject("error").get("info");
-                    
-                } else {
-                    
-                    return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type");
-                    
+                    //System.out.println("cursor.next().get(\"currency\"): " + cursor.next().get("currency"));
+                    //System.out.println("currencies: " + currencies);
+            
+                    if(document.get("currency").equals(currencies[i])) {
+                        
+                        JsonObject jo2arraylist = new JsonObject();
+                        jo2arraylist.addProperty("base", jo.get("base").getAsString());
+                        
+                        jo2arraylist.addProperty("currency", currencies[i]);
+                        jo2arraylist.addProperty("rate", document.getDouble("rate"));
+                        jo2arraylist.addProperty("timestamp", document.getLong("timestamp"));
+                        
+                        ajo.add(jo2arraylist);
+                        
+                    }
+            
                 }
                 
             }
-            
-        } catch (MalformedURLException ex) {
-            Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-        } finally {
-            try {
-                is.close();
-            } catch (IOException ex) {
-                Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
+        };
         
-        return null;
+        this.collection.find(eq("base", jo.get("base").getAsString())).forEach(add2arraylist);
+        
+        return ajo;
         
     }
     
-    public String convertAllFromA(String a, float b) {
+    public void update(JsonObject jo, String b) {
         
-        InputStream is = null;
+        //System.out.println(jo);
         
-        try {
-            
-            ArrayList<String> als = new ArrayList<>();
-            
-            for(int i=0; i<currencies.length; i++) {
-                
-                if(!currencies[i].equals(a)) {
-                    
-                    als.add(currencies[i]);
-                    
-                }
-                
-            }
-            
-            String symbols = "";
-            
-            for(int n=0; n<als.size(); n++) {
-                
-                symbols += als.get(n);
-                if(n != als.size()-1) {
-                    symbols += ",";
-                }
-                
-            }
-            
-            is = new URL("http://data.fixer.io/api/latest?access_key=" + fixerAccessKey + "&base=" + a + "&symbols=" + symbols).openStream();
-            BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
-            String jsonText = rd.readLine();
-            JsonObject jo = (new JsonParser()).parse(jsonText).getAsJsonObject();
-            
-            if(jo.getAsJsonPrimitive("success").getAsBoolean()) {
-                
-                String res = "";
-
-                for (Map.Entry<String,JsonElement> entry : jo.getAsJsonObject("rates").entrySet()) {
-                    
-                    //float res = jo.getAsJsonObject("rates").get(b).getAsFloat() * c;
-                    float conversion = entry.getValue().getAsFloat() * b;
-
-                    res += b + " " + a + " = " + conversion + " " + entry.getKey() + "<br>";
-
-                }
-
-                return res;
-                
-            } else {
-                
-                if(jo.getAsJsonObject("error").get("info") != null) {
-                    
-                    return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type") + "<br>" + "Info: " + jo.getAsJsonObject("error").get("info");
-                    
-                } else {
-                    
-                    return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type");
-                    
-                }
-                
-            }
-            
-        } catch (MalformedURLException ex) {
-            Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-        } finally {
-            try {
-                is.close();
-            } catch (IOException ex) {
-                Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        
-        return null;
-        
-    }
-    
-    public String testeRates() {
-        
-        InputStream is = null;
-        try {
-            
-            is = new URL("http://data.fixer.io/api/latest?access_key=" + fixerAccessKey + "&base=EUR&symbols=USD,AUD,CAD,PLN,MXN").openStream();
-            BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
-            String jsonText = rd.readLine();
-            JsonObject jo = (new JsonParser()).parse(jsonText).getAsJsonObject();
-            
-            //System.out.println(jo.toString());
-            return jo.getAsJsonObject("rates").get("USD").toString();
-            
-        } catch (MalformedURLException ex) {
-            Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-        } finally {
-            try {
-                is.close();
-            } catch (IOException ex) {
-                Logger.getLogger(DbQueries.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
-        
-        return null;
+        this.collection.updateOne(and(eq("base", jo.get("base").getAsString()), eq("currency", b)), combine(set("rate", jo.getAsJsonObject("rates").get(b).getAsDouble()), set("timestamp", jo.get("timestamp").getAsLong())));
         
     }
     
