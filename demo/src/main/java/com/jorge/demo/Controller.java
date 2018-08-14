@@ -7,10 +7,7 @@ package com.jorge.demo;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
-import java.io.InputStream;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -204,11 +201,11 @@ public class Controller {
     
     public String getA2B(String a, String b) {
         
-        JsonObject jo2send2dbqueries = new JsonObject();
+        JsonObject joToSendToDbQueries = new JsonObject();
         
-        jo2send2dbqueries.addProperty("base", a);
+        joToSendToDbQueries.addProperty("base", a);
         
-        ArrayList<JsonObject> ajo = dbq.getFromMongoDB(jo2send2dbqueries, new String[]{b});
+        ArrayList<JsonObject> ajo = dbq.getFromMongoDB(joToSendToDbQueries, new String[]{b});
         
         JsonObject jo = null;
         
@@ -245,7 +242,7 @@ public class Controller {
             long now = System.currentTimeMillis()/1000;
             float nminutos = (now - jo.get("timestamp").getAsLong())/60f;
             
-            System.out.println("nminutos: " + nminutos);
+            //System.out.println("nMinutos: " + nMinutos);
             
             if(nminutos >= 30) {
                 
@@ -291,11 +288,11 @@ public class Controller {
     
     public String getAllFromA(String a) {
         
-        JsonObject jo2send2dbqueries = new JsonObject();
+        JsonObject joToSendToDbQueries = new JsonObject();
         
-        jo2send2dbqueries.addProperty("base", a);
+        joToSendToDbQueries.addProperty("base", a);
         
-        ArrayList<JsonObject> ajo = dbq.getFromMongoDB(jo2send2dbqueries, this.currencies);
+        ArrayList<JsonObject> ajo = dbq.getFromMongoDB(joToSendToDbQueries, this.currencies);
         
         JsonObject jo = null;
         
@@ -335,31 +332,31 @@ public class Controller {
             
             boolean bool = false;
             
-            ArrayList<String> straux = new ArrayList<>();
+            ArrayList<String> strAux = new ArrayList<>();
             
             for(JsonObject fjo: ajo) {
                 
                 long now = System.currentTimeMillis()/1000;
-                float nminutos = (now - fjo.get("timestamp").getAsLong())/60f;
+                float nMinutos = (now - fjo.get("timestamp").getAsLong())/60f;
                 
-                if(nminutos >= 30) {
+                if(nMinutos >= 30) {
                     
                     bool = true;
                     
                 }
                 
-                System.out.println("fjo:");
-                System.out.println(fjo);
+                //System.out.println("fjo:");
+                //System.out.println(fjo);
                 
-                straux.add(fjo.get("currency").getAsString());
+                strAux.add(fjo.get("currency").getAsString());
                 
             }
             
-            if(!bool || straux.size() == this.currencies.length) {
+            if(!bool) { // || strAux.size() == this.currencies.length
                 
                 for(int i=0; i<this.currencies.length; i++) {
                     
-                    if(!straux.contains(this.currencies[i])) {
+                    if(!strAux.contains(this.currencies[i])) {
                         
                         bool = true;
                         break;
@@ -400,28 +397,29 @@ public class Controller {
 
                     }
 
-                } else { //falta inserir se não existir. usar o ajo
+                } else {
                     
                     String res = "";
                     
-                    JsonObject json2database = new JsonObject();
+                    JsonObject jsonToDatabase = new JsonObject();
                     
-                    json2database.addProperty("base", jo.get("base").getAsString());
-                    json2database.addProperty("timestamp", jo.get("timestamp").getAsLong());
+                    jsonToDatabase.addProperty("base", jo.get("base").getAsString());
+                    jsonToDatabase.addProperty("timestamp", jo.get("timestamp").getAsLong());
                     
-                    JsonObject innerjson2database = new JsonObject();
+                    JsonObject innerJsonToDatabase = new JsonObject();
             
                     for (Map.Entry<String,JsonElement> entry : jo.getAsJsonObject("rates").entrySet()) {
                         
-                        if(straux.contains(entry.getKey())) {
+                        if(strAux.contains(entry.getKey())) {
+                            
+                            //System.out.println("key:");
+                            //System.out.println(entry.getKey());
                             
                             dbq.update(jo, entry.getKey());
                             
-                            //jo.getAsJsonObject("rates").remove(entry.getKey());
-                            
                         } else {
                             
-                            innerjson2database.addProperty(entry.getKey(), entry.getValue().getAsDouble());
+                            innerJsonToDatabase.addProperty(entry.getKey(), entry.getValue().getAsDouble());
                             
                         }
 
@@ -429,11 +427,11 @@ public class Controller {
 
                     }
                     
-                    json2database.add("rates", innerjson2database);
+                    jsonToDatabase.add("rates", innerJsonToDatabase);
                     
-                    if(json2database.getAsJsonObject("rates").size() != 0) {
+                    if(jsonToDatabase.getAsJsonObject("rates").size() != 0) {
                         
-                        dbq.putIntoMongoDB(jo);
+                        dbq.putIntoMongoDB(jsonToDatabase);
                         
                     }
 
@@ -451,24 +449,96 @@ public class Controller {
     
     public String convertA2B(String a, String b, double c) {
         
-        InputStream is = null;
+        JsonObject joToSendToDbQueries = new JsonObject();
         
-        JsonObject jo = fio.fetchData(a, new String[]{b});
-        if(jo.getAsJsonPrimitive("success").getAsBoolean()) {
+        joToSendToDbQueries.addProperty("base", a);
+        
+        ArrayList<JsonObject> ajo = dbq.getFromMongoDB(joToSendToDbQueries, new String[]{b});
+        
+        JsonObject jo = null;
+        
+        //System.out.println("From db:");
+        //System.out.println(ajo.toString());
+        
+        if(ajo.size() == 0) {
             
-            double res = jo.getAsJsonObject("rates").get(b).getAsDouble() * c;
+            jo = fio.fetchData(a, new String[]{b});
             
-            return c + " " + a + " = " + res + " " + b;
+            if(!jo.getAsJsonPrimitive("success").getAsBoolean()) {
+            
+                if(jo.getAsJsonObject("error").get("info") != null) {
+                
+                    return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type") + "<br>" + "Info: " + jo.getAsJsonObject("error").get("info");
+                
+                } else {
+
+                    return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type");
+
+                }
+
+            } else {
+                
+                dbq.putIntoMongoDB(jo);
+                
+                //System.out.println("jo:");
+                //System.out.println(jo);
+                
+                double res = jo.getAsJsonObject("rates").get(b).getAsDouble() * c;
+            
+                return c + " " + a + " = " + res + " " + b;
+                
+            }
             
         } else {
             
-            if(jo.getAsJsonObject("error").get("info") != null) {
+            jo = ajo.get(0);
+            
+            long dbTimestamp = jo.get("timestamp").getAsLong();
+            
+            long now = System.currentTimeMillis()/1000;
+            float nMinutos = (now - jo.get("timestamp").getAsLong())/60f;
+            
+            //System.out.println("nMinutos: " + nMinutos);
+            
+            if(nMinutos >= 30) {
                 
-                return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type") + "<br>" + "Info: " + jo.getAsJsonObject("error").get("info");
+                jo = fio.fetchData(a, new String[]{b});
+            
+                if(!jo.getAsJsonPrimitive("success").getAsBoolean()) {
+
+                    if(jo.getAsJsonObject("error").get("info") != null) {
+
+                        return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type") + "<br>" + "Info: " + jo.getAsJsonObject("error").get("info");
+
+                    } else {
+
+                        return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type");
+
+                    }
+
+                } else {
+                    
+                    if(jo.get("timestamp").getAsLong() != dbTimestamp) {
+                        
+                        dbq.update(jo, b);
+                        
+                    } //else {
+                        
+                        //System.out.println("FixerIO still hasn't updated rates");
+                        
+                    //}
+                    
+                    double res = jo.getAsJsonObject("rates").get(b).getAsDouble() * c;
+            
+                    return c + " " + a + " = " + res + " " + b;
+                    
+                }
                 
             } else {
                 
-                return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type");
+                double res = jo.get("rate").getAsDouble() * c;
+                
+                return c + " " + a + " = " + res + " " + b;
                 
             }
             
@@ -476,45 +546,174 @@ public class Controller {
         
     }
     
-    /**
-     * Isto está mal. Falta mais um argumento array de strings
-     * 
-     * @param a
-     * @param b
-     * @return 
-     */
-    public String convertA2SuppliedList(String a, double b, String currencies) {
+    public String convertA2SuppliedList(String a, String currencies , double c) {
         
         String[] curr = currencies.split(",");
         
-        JsonObject jo = fio.fetchData(a, curr);
+        JsonObject joToSendToDbQueries = new JsonObject();
         
-        if(jo.getAsJsonPrimitive("success").getAsBoolean()) {
+        joToSendToDbQueries.addProperty("base", a);
+        
+        ArrayList<JsonObject> ajo = dbq.getFromMongoDB(joToSendToDbQueries, curr);
+        
+        JsonObject jo = null;
+        
+        //System.out.println("From db:");
+        //System.out.println(ajo.toString());
+        
+        if(ajo.size() == 0) {
             
-            String res = "";
+            jo = fio.fetchData(a, curr);
             
-            for (Map.Entry<String,JsonElement> entry : jo.getAsJsonObject("rates").entrySet()) {
+            if(!jo.getAsJsonPrimitive("success").getAsBoolean()) {
+            
+                if(jo.getAsJsonObject("error").get("info") != null) {
                 
-                //float res = jo.getAsJsonObject("rates").get(b).getAsFloat() * c;
-                double conversion = entry.getValue().getAsDouble() * b;
+                    return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type") + "<br>" + "Info: " + jo.getAsJsonObject("error").get("info");
                 
-                res += b + " " + a + " = " + conversion + " " + entry.getKey() + "<br>";
+                } else {
+
+                    return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type");
+
+                }
+
+            } else {
+                
+                dbq.putIntoMongoDB(jo);
+                
+                //System.out.println("jo:");
+                //System.out.println(jo);
+                
+                String res = "";
+            
+                for (Map.Entry<String,JsonElement> entry : jo.getAsJsonObject("rates").entrySet()) {
+
+                    //float res = jo.getAsJsonObject("rates").get(b).getAsFloat() * c;
+                    double conversion = entry.getValue().getAsDouble() * c;
+
+                    res += c + " " + a + " = " + conversion + " " + entry.getKey() + "<br>";
+
+                }
+
+                return res;
                 
             }
-            
-            return res;
             
         } else {
             
-            if(jo.getAsJsonObject("error").get("info") != null) {
+            boolean bool = false;
+            
+            ArrayList<String> straux = new ArrayList<>();
+            
+            for(JsonObject fjo: ajo) {
                 
-                return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type") + "<br>" + "Info: " + jo.getAsJsonObject("error").get("info");
+                long now = System.currentTimeMillis()/1000;
+                float nMinutos = (now - fjo.get("timestamp").getAsLong())/60f;
                 
-            } else {
+                if(nMinutos >= 30) {
+                    
+                    bool = true;
+                    
+                }
                 
-                return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type");
+                //System.out.println("fjo:");
+                //System.out.println(fjo);
+                
+                straux.add(fjo.get("currency").getAsString());
                 
             }
+            
+            if(!bool) {
+                
+                for(int i=0; i<curr.length; i++) {
+                    
+                    if(!straux.contains(curr[i])) {
+                        
+                        bool = true;
+                        break;
+                        
+                    }
+                    
+                }
+                
+                if(!bool) {
+                    
+                    String res = "";
+                    
+                    for(JsonObject fjo2: ajo) {
+                    
+                        res += c + " " + a + " = " + fjo2.get("rate").getAsDouble() * c + " " + fjo2.get("currency").getAsString() + "<br>";
+
+                    }
+                    
+                    return res;
+                    
+                }
+                
+            }
+            
+            if(bool) {
+                
+                jo = fio.fetchData(a, curr);
+                
+                if(!jo.getAsJsonPrimitive("success").getAsBoolean()) {
+
+                    if(jo.getAsJsonObject("error").get("info") != null) {
+
+                        return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type") + "<br>" + "Info: " + jo.getAsJsonObject("error").get("info");
+
+                    } else {
+
+                        return "Error <br>" + "Code: " + jo.getAsJsonObject("error").get("code") + "<br>" + "Type: " + jo.getAsJsonObject("error").get("type");
+
+                    }
+
+                } else {
+                    
+                    String res = "";
+                    
+                    JsonObject jsonToDatabase = new JsonObject();
+                    
+                    jsonToDatabase.addProperty("base", jo.get("base").getAsString());
+                    jsonToDatabase.addProperty("timestamp", jo.get("timestamp").getAsLong());
+                    
+                    JsonObject innerJsonToDatabase = new JsonObject();
+            
+                    for (Map.Entry<String,JsonElement> entry : jo.getAsJsonObject("rates").entrySet()) {
+                        
+                        if(straux.contains(entry.getKey())) {
+                            
+                            dbq.update(jo, entry.getKey());
+                            
+                            //jo.getAsJsonObject("rates").remove(entry.getKey());
+                            
+                        } else {
+                            
+                            innerJsonToDatabase.addProperty(entry.getKey(), entry.getValue().getAsDouble());
+                            
+                        }
+
+                        double conversion = entry.getValue().getAsDouble() * c;
+
+                        res += c + " " + a + " = " + conversion + " " + entry.getKey() + "<br>";
+
+                    }
+                    
+                    jsonToDatabase.add("rates", innerJsonToDatabase);
+                    
+                    if(jsonToDatabase.getAsJsonObject("rates").size() != 0) {
+                        
+                        dbq.putIntoMongoDB(jsonToDatabase);
+                        
+                    }
+
+                    return res;
+                    
+                }
+                
+            }
+            
+            return null;
             
         }
         

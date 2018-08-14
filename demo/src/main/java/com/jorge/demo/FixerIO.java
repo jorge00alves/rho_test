@@ -29,8 +29,6 @@ public class FixerIO {
     
     public FixerIO() {
         
-        DbQueries dbq = new DbQueries();
-        
     }
     
     public JsonObject fetchData(String base, String[] currencies) {

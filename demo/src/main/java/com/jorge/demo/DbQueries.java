@@ -45,12 +45,6 @@ public class DbQueries {
         
     }
     
-    /**
-     * Alterar de maneira a receber um JsonObject com 4 campos (base + currency + rate + timestamp).
-     * Ou então isto pode estar assim.
-     * 
-     * @param jo 
-     */
     public void putIntoMongoDB(JsonObject jo) {
         
         long timestamp = jo.get("timestamp").getAsLong();
@@ -78,18 +72,11 @@ public class DbQueries {
         
     }
     
-    /**
-     * Fazer um arraylist de JsonObjects. Cada JsonObject tem os 4 campos (base + currency + rate + timestamp). Isto vai fazer com que altere o código todo no FixerIO.
-     * 
-     * @param jo
-     * @param currencies
-     * @return 
-     */
     public ArrayList<JsonObject> getFromMongoDB(JsonObject jo, String[] currencies) {
         
         ArrayList<JsonObject> ajo = new ArrayList<>();
         
-        Block<Document> add2arraylist = new Block<Document>() {
+        Block<Document> addToArrayList = new Block<Document>() {
             @Override
             public void apply(final Document document) {
                 //System.out.println(document.toJson());
@@ -101,14 +88,14 @@ public class DbQueries {
             
                     if(document.get("currency").equals(currencies[i])) {
                         
-                        JsonObject jo2arraylist = new JsonObject();
-                        jo2arraylist.addProperty("base", jo.get("base").getAsString());
+                        JsonObject joToArrayList = new JsonObject();
+                        joToArrayList.addProperty("base", jo.get("base").getAsString());
                         
-                        jo2arraylist.addProperty("currency", currencies[i]);
-                        jo2arraylist.addProperty("rate", document.getDouble("rate"));
-                        jo2arraylist.addProperty("timestamp", document.getLong("timestamp"));
+                        joToArrayList.addProperty("currency", currencies[i]);
+                        joToArrayList.addProperty("rate", document.getDouble("rate"));
+                        joToArrayList.addProperty("timestamp", document.getLong("timestamp"));
                         
-                        ajo.add(jo2arraylist);
+                        ajo.add(joToArrayList);
                         
                     }
             
@@ -117,15 +104,13 @@ public class DbQueries {
             }
         };
         
-        this.collection.find(eq("base", jo.get("base").getAsString())).forEach(add2arraylist);
+        this.collection.find(eq("base", jo.get("base").getAsString())).forEach(addToArrayList);
         
         return ajo;
         
     }
     
     public void update(JsonObject jo, String b) {
-        
-        //System.out.println(jo);
         
         this.collection.updateOne(and(eq("base", jo.get("base").getAsString()), eq("currency", b)), combine(set("rate", jo.getAsJsonObject("rates").get(b).getAsDouble()), set("timestamp", jo.get("timestamp").getAsLong())));
         

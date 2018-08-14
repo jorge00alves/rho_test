@@ -32,28 +32,28 @@ public class WebApp {
     @RequestMapping("/getA2B")
     public String getA2B(@RequestParam(value="a", defaultValue="EUR") String a, @RequestParam(value="b", defaultValue="USD") String b) {
         
-        return ctrl.getA2B(a, b);
+        return ctrl.getA2B(a.toUpperCase(), b.toUpperCase());
         
     }
     
     @RequestMapping("/getAllFromA")
     public String getAllFromA(@RequestParam(value="a", defaultValue="EUR") String a) {
         
-        return ctrl.getAllFromA(a);
+        return ctrl.getAllFromA(a.toUpperCase());
         
     }
     
     @RequestMapping("/convertA2B")
-    public String convertA2B(@RequestParam(value="a", defaultValue="EUR") String a, @RequestParam(value="b", defaultValue="USD") String b, @RequestParam(value="c", defaultValue="25") float c) {
+    public String convertA2B(@RequestParam(value="a", defaultValue="EUR") String a, @RequestParam(value="b", defaultValue="USD") String b, @RequestParam(value="c", defaultValue="25") double c) {
         
-        return ctrl.convertA2B(a, b, c);
+        return ctrl.convertA2B(a.toUpperCase(), b.toUpperCase(), c);
         
     }
     
     @RequestMapping("/convertA2SuppliedList")
-    public String convertA2SuppliedList(@RequestParam(value="a", defaultValue="EUR") String a, @RequestParam(value="b", defaultValue="25") float b, @RequestParam(value="c", defaultValue="USD,AED") String c) {
+    public String convertA2SuppliedList(@RequestParam(value="a", defaultValue="EUR") String a, @RequestParam(value="b", defaultValue="USD,AED") String b, @RequestParam(value="c", defaultValue="25") double c) {
         
-        return ctrl.convertA2SuppliedList(a, b, c);
+        return ctrl.convertA2SuppliedList(a.toUpperCase(), b.toUpperCase(), c);
         
     }
     
