@@ -31,6 +31,13 @@ public class FixerIO {
         
     }
     
+    /**
+     * Method to fetch data from https://fixer.io/
+     * 
+     * @param base - base currency
+     * @param currencies - currency rates to fetch "based" on base currency
+     * @return 
+     */
     public JsonObject fetchData(String base, String[] currencies) {
         
         InputStream is = null;

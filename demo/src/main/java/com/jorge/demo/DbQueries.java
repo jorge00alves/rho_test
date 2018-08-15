@@ -29,6 +29,9 @@ public class DbQueries {
     MongoDatabase database;
     MongoCollection<Document> collection;
     
+    /**
+     * Constructor. Instatiates database connection.
+     */
     public DbQueries() {
         
         this.mongoClient = new MongoClient(new MongoClientURI("mongodb://jorge:teste1@ds111012.mlab.com:11012/teste"));
@@ -37,6 +40,15 @@ public class DbQueries {
         
     }
     
+    /**
+     * Regular Mongodb document.
+     * 
+     * @param a - base currency
+     * @param b - currency
+     * @param c - currency rate
+     * @param timestamp
+     * @return 
+     */
     public Document createDoc(String a, String b, double c, long timestamp) {
         
         Document doc = new Document("base", a).append("currency", b).append("rate", c).append("timestamp", timestamp);
@@ -45,33 +57,42 @@ public class DbQueries {
         
     }
     
+    /**
+     * Method to insert Documents into database.
+     * 
+     * @param jo - argument containing the necessary fields to create Documents
+     */
     public void putIntoMongoDB(JsonObject jo) {
         
         long timestamp = jo.get("timestamp").getAsLong();
         
         String a = jo.get("base").getAsString();
         
-        List<Document> documents = new ArrayList<Document>();
+        List<Document> documents = new ArrayList<Document>(); //necessary to insert many documents
         
-        for (Map.Entry<String,JsonElement> entry : jo.getAsJsonObject("rates").entrySet()) {
+        for (Map.Entry<String,JsonElement> entry : jo.getAsJsonObject("rates").entrySet()) { //loop through rates
 
-            //res += "1 " + a + " = " + entry.getValue().toString() + " " + entry.getKey() + "<br>";
             String b = entry.getKey();
             
             double c = entry.getValue().getAsDouble();
             
             Document doc = createDoc(a, b, c, timestamp);
             
-            documents.add(doc);
-            
-            //this.collection.insertOne(doc);
+            documents.add(doc); //insert Document into ArrayList
 
         }
         
-        this.collection.insertMany(documents);
+        this.collection.insertMany(documents); //insert documents into database
         
     }
     
+    /**
+     * Method to query database
+     * 
+     * @param jo - object containing the base currency
+     * @param currencies - array with the currencies to create queries
+     * @return 
+     */
     public ArrayList<JsonObject> getFromMongoDB(JsonObject jo, String[] currencies) {
         
         ArrayList<JsonObject> ajo = new ArrayList<>();
@@ -79,12 +100,8 @@ public class DbQueries {
         Block<Document> addToArrayList = new Block<Document>() {
             @Override
             public void apply(final Document document) {
-                //System.out.println(document.toJson());
                 
                 for(int i=0; i<currencies.length; i++) {
-                    
-                    //System.out.println("cursor.next().get(\"currency\"): " + cursor.next().get("currency"));
-                    //System.out.println("currencies: " + currencies);
             
                     if(document.get("currency").equals(currencies[i])) {
                         
@@ -110,6 +127,12 @@ public class DbQueries {
         
     }
     
+    /**
+     * Method to update documents on database
+     * 
+     * @param jo - object containing base currency + timestamp + rate
+     * @param b - currency
+     */
     public void update(JsonObject jo, String b) {
         
         this.collection.updateOne(and(eq("base", jo.get("base").getAsString()), eq("currency", b)), combine(set("rate", jo.getAsJsonObject("rates").get(b).getAsDouble()), set("timestamp", jo.get("timestamp").getAsLong())));

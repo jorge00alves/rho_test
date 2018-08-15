@@ -49,7 +49,7 @@ public class WebApp {
         return ctrl.convertA2B(a.toUpperCase(), b.toUpperCase(), c);
         
     }
-    
+
     @RequestMapping("/convertA2SuppliedList")
     public String convertA2SuppliedList(@RequestParam(value="a", defaultValue="EUR") String a, @RequestParam(value="b", defaultValue="USD,AED") String b, @RequestParam(value="c", defaultValue="25") double c) {
         
